@@ -1,14 +1,6 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
-// pink
-// const int B_MAX = 80;
-// const int B_MIN = 40;
-// const int G_MAX = 70;
-// const int G_MIN = 30;
-// const int R_MAX = 150;
-// const int R_MIN = 80;
-
 // yellow
 const int B_MAX = 70;
 const int B_MIN = 0;
@@ -22,7 +14,7 @@ int main(int argc, char *argv[])
     cv::Mat image;
     cv::Mat mask, result;
 
-    image = cv::imread("../resources/yellow.jpeg");
+    image = cv::imread("../../resources/yellow.jpeg");
     cv::resize(image, image, cv::Size(), 0.3, 0.3);
 	if (image.empty())
     {
@@ -40,14 +32,14 @@ int main(int argc, char *argv[])
     cv::threshold(mask, mask, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU); // 2値化（閾値を自動で設定）
 
     std::vector<int> point(mask.rows, mask.cols);
-    std::cout << "tip color detected !" << std::endl;
+
     for (int i=0; i<mask.rows; i++)
     {
         for (int j=0; j<mask.cols; j++)
         {
             if (static_cast<int>(mask.at<unsigned char>(i, j)) != 0)
             {
-                std::cout << "(row, col) = " << i << ", " << j << std::endl;
+                // std::cout << "(row, col) = " << i << ", " << j << std::endl;
                 if (j < point[1])
                 {
                     point[0] = i;
@@ -63,8 +55,8 @@ int main(int argc, char *argv[])
     cv::circle(image, cv::Point(point[1],point[0]), 20, cv::Scalar(0,255,0), 2);
 
     // 表示
-    // cv::namedWindow("mask image", cv::WINDOW_NORMAL);
-    // cv::imshow("mask image", mask);
+    cv::namedWindow("mask image", cv::WINDOW_NORMAL);
+    cv::imshow("mask image", mask);
     cv::namedWindow("result image", cv::WINDOW_NORMAL);
     cv::imshow("result image", image);
 
