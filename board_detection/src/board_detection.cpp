@@ -1,6 +1,22 @@
 #include <cmath>
+#include <eigen3/Eigen/Dense>
 #include <opencv2/opencv.hpp>
 
+#define deg2rad(deg) (deg*M_PI/180)
+
+void calcIntersectionPoint(const int rho_1, const int theta_1, const int rho_2, const int theta_2)
+{
+    const double delta = sin(deg2rad(theta_1))*cos(deg2rad(theta_2)) - cos(deg2rad(theta_1))*sin(deg2rad(theta_2));
+    Eigen::Matrix2d A;
+    A <<  cos(deg2rad(theta_2)), sin(deg2rad(theta_2)),
+          cos(deg2rad(theta_1)), sin(deg2rad(theta_1));
+    Eigen::VectorXd B(2);
+    B <<  -rho_1*cos(deg2rad(theta_1))+rho_2*cos(deg2rad(theta_2)),
+          -rho_1*sin(deg2rad(theta_1))+rho_2*sin(deg2rad(theta_2));
+    Eigen::MatrixXd C;
+    C = A*B/delta;
+    std::cout << "Here is the vector v:\n" << C << std::endl;
+}
 
 int main(int argc, char *argv[])
 {
@@ -9,6 +25,7 @@ int main(int argc, char *argv[])
 
 
     // Load source image
+    // image = cv::imread("../../resources/dashed-line.png");
     image = cv::imread("../../resources/plane.jpeg");
     cv::resize(image, image, cv::Size(), 0.6, 0.6);
     result = image.clone();
@@ -22,7 +39,7 @@ int main(int argc, char *argv[])
     cv::namedWindow("Canny result", cv::WINDOW_NORMAL);
     cv::imshow("Canny result", edges);
 
-
+/*
     // Voting
     int diagonal = std::hypot(edges.rows, edges.cols);  // 平方根
     cv::Mat accumlate = cv::Mat::zeros(2*diagonal, 180, CV_8UC1);
@@ -36,14 +53,14 @@ int main(int argc, char *argv[])
             {
                 for (int theta=0; theta<180; theta++)
                 {
-                    double rho = round( y*sin(theta*M_PI/180) + x*cos(theta*M_PI/180) ) + diagonal;
+                    double rho = round( y*sin(deg2rad(theta)) + x*cos(deg2rad(theta)) ) + diagonal;
                     accumlate.at<uchar>(rho, theta)+=2;
                     // accumlate.at<cv::Vec3b>(rho, theta)[2]++;
                 }
             }
         }
     }
-    // cv::resize(accumlate, accumlate, cv::Size(), 0.3*accumlate.rows/accumlate.cols, 0.3);   // 確認用の縦横比調整
+    cv::resize(accumlate, accumlate, cv::Size(), 0.3*accumlate.rows/accumlate.cols, 0.3);   // 確認用の縦横比調整
 
 
     // Sorting
@@ -61,22 +78,35 @@ int main(int argc, char *argv[])
     std::sort(votes.begin(),votes.end(),[](const std::vector<int> &alpha,const std::vector<int> &beta){return alpha[0] > beta[0];});
 
     // Check
-    for (int i=0; i<15; i++)
+    for (int i=0; i<5; i++)
     {
         std::cout << "(vote, rho, theta) : " << votes[i][0] << "," << votes[i][1] << "," << votes[i][2] << std::endl;
-        cv::circle(accumlate, cv::Point(votes[i][2],votes[i][1]), 15, 255, 1);
+        // cv::circle(accumlate, cv::Point(votes[i][2],votes[i][1]), 15, 255, 1);
     }
-    // cv::namedWindow("Accumlation result", cv::WINDOW_NORMAL);
-    // cv::imshow("Accumlation result", accumlate);
+    cv::namedWindow("Accumlation result", cv::WINDOW_NORMAL);
+    cv::imshow("Accumlation result", accumlate);
     cv::imwrite("../result/hough_result.png", accumlate);
+*/
+
+
+    std::vector<cv::Vec4i> lines;
+    HoughLinesP( edges, lines, 1, CV_PI/180, 80, 30, 20 );
+    cv::cvtColor(edges, edges, CV_GRAY2BGR);
+    for( size_t i = 0; i < lines.size(); i++ )
+    {
+        cv::line( result, cv::Point(lines[i][0], lines[i][1]),
+                    cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0,0,255), 2, 4 );
+    }
 
 
     // Polar to Cartesian
-    std::vector<cv::Point> coordinate;
-    coordinate.push_back(cv::Point(10,20));
-    coordinate.push_back(cv::Point(100,100));
+    // std::vector<cv::Point> coordinate;
+    // coordinate.push_back(cv::Point(10,20));
+    // coordinate.push_back(cv::Point(100,100));
 
-    cv::line(result, coordinate[0], coordinate[1], cv::Scalar(0,255,0), 1, cv::LINE_AA);
+    // calcIntersectionPoint(votes[1][1], votes[1][2], votes[2][1], votes[2][2]);
+
+    // cv::line(result, coordinate[0], coordinate[1], cv::Scalar(0,255,0), 1, cv::LINE_AA);
 
     cv::namedWindow("result", cv::WINDOW_NORMAL);
     cv::imshow("result", result);
