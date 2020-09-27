@@ -4,6 +4,13 @@
 
 #define deg2rad(deg) (deg*M_PI/180)
 
+const int B_MAX = 70;
+const int B_MIN = 0;
+const int G_MAX = 200;
+const int G_MIN = 100;
+const int R_MAX = 210;
+const int R_MIN = 100;
+
 void calcIntersectionPoint(const int rho_1, const int theta_1, const int rho_2, const int theta_2)
 {
     const double delta = sin(deg2rad(theta_1))*cos(deg2rad(theta_2)) - cos(deg2rad(theta_1))*sin(deg2rad(theta_2));
@@ -21,20 +28,32 @@ void calcIntersectionPoint(const int rho_1, const int theta_1, const int rho_2, 
 int main(int argc, char *argv[])
 {
     cv::Mat image;
+    cv::Mat mask, edges;
     cv::Mat result;
 
 
     // Load source image
-    // image = cv::imread("../../resources/dashed-line.png");
     image = cv::imread("../../resources/plane.jpeg");
+	if (image.empty())
+    {
+		std::cerr << "Not found input image..." << std::endl;
+		return -1;
+	}
     cv::resize(image, image, cv::Size(), 0.6, 0.6);
     result = image.clone();
 
+	// inRangeを用いて色抽出フィルタリング
+	cv::Scalar s_min = cv::Scalar(B_MIN, G_MIN, R_MIN);
+	cv::Scalar s_max = cv::Scalar(B_MAX, G_MAX, R_MAX);
+	cv::inRange(image, s_min, s_max, mask);
+
+    // マスク画像のOpening処理
+    cv::morphologyEx(mask, mask, cv::MORPH_OPEN, cv::Mat());
+    cv::threshold(mask, mask, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU); // 2値化（閾値を自動で設定）
 
     // Canny edge
-    cv::Mat edges;
-    cv::blur(image, image, cv::Size(3, 3)); 
-    cv::Canny(image, edges, 200, 600, 3);
+    // cv::blur(image, image, cv::Size(3, 3));
+    cv::Canny(mask, edges, 200, 600, 3);
 
     cv::namedWindow("Canny result", cv::WINDOW_NORMAL);
     cv::imshow("Canny result", edges);
@@ -97,16 +116,6 @@ int main(int argc, char *argv[])
         cv::line( result, cv::Point(lines[i][0], lines[i][1]),
                     cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0,0,255), 2, 4 );
     }
-
-
-    // Polar to Cartesian
-    // std::vector<cv::Point> coordinate;
-    // coordinate.push_back(cv::Point(10,20));
-    // coordinate.push_back(cv::Point(100,100));
-
-    // calcIntersectionPoint(votes[1][1], votes[1][2], votes[2][1], votes[2][2]);
-
-    // cv::line(result, coordinate[0], coordinate[1], cv::Scalar(0,255,0), 1, cv::LINE_AA);
 
     cv::namedWindow("result", cv::WINDOW_NORMAL);
     cv::imshow("result", result);
