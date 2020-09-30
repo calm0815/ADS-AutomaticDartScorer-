@@ -1,124 +1,119 @@
 #include <cmath>
-#include <eigen3/Eigen/Dense>
 #include <opencv2/opencv.hpp>
 
 #define deg2rad(deg) (deg*M_PI/180)
 
-const int B_MAX = 70;
-const int B_MIN = 0;
-const int G_MAX = 200;
-const int G_MIN = 100;
-const int R_MAX = 210;
-const int R_MIN = 100;
-
-void calcIntersectionPoint(const int rho_1, const int theta_1, const int rho_2, const int theta_2)
+cv::Mat extractColor(cv::Mat image, cv::Scalar range_min, cv::Scalar range_max, int opening, int closing)
 {
-    const double delta = sin(deg2rad(theta_1))*cos(deg2rad(theta_2)) - cos(deg2rad(theta_1))*sin(deg2rad(theta_2));
-    Eigen::Matrix2d A;
-    A <<  cos(deg2rad(theta_2)), sin(deg2rad(theta_2)),
-          cos(deg2rad(theta_1)), sin(deg2rad(theta_1));
-    Eigen::VectorXd B(2);
-    B <<  -rho_1*cos(deg2rad(theta_1))+rho_2*cos(deg2rad(theta_2)),
-          -rho_1*sin(deg2rad(theta_1))+rho_2*sin(deg2rad(theta_2));
-    Eigen::MatrixXd C;
-    C = A*B/delta;
-    std::cout << "Here is the vector v:\n" << C << std::endl;
+    cv::Mat mask;
+	cv::inRange(image, range_min, range_max, mask);
+
+    // Opening/Closing
+    if (opening != 0) cv::morphologyEx(mask, mask, cv::MORPH_OPEN, cv::Mat(), cv::Point(-1,-1), opening);
+    if (closing != 0) cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1,-1), closing);
+
+    return mask;
+}
+
+cv::Mat detectEllipse(cv::Mat image, int threshold_min, int threshold_max, const cv::Scalar color, int thickness = 1)
+{
+    std::vector<std::vector<cv::Point>> detected_contours;
+
+    cv::findContours(image, detected_contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);     // 楕円切り出し
+    if (image.type() == 0) cv::cvtColor(image, image, CV_GRAY2BGR);
+
+    for (int i = 0; i < detected_contours.size(); ++i)
+    {
+        size_t count = detected_contours[i].size();
+        if(count < threshold_min || count > threshold_max) continue;                    // （小さすぎる|大きすぎる）輪郭を除外
+        cv::Mat pointsf;
+        cv::Mat(detected_contours[i]).convertTo(pointsf, CV_32F);
+        cv::RotatedRect box = cv::fitEllipse(pointsf);                  // 楕円フィッティング
+        cv::ellipse(image, box, color, thickness, CV_AA);   // 楕円の描画
+    }
+
+    return image;
 }
 
 int main(int argc, char *argv[])
 {
-    cv::Mat image;
-    cv::Mat mask, edges;
-    cv::Mat result;
-
+    cv::Mat src, result;
+    cv::Mat board_mask, red_mask, blue_mask, black_mask, white_mask;
+    cv::Mat edges;
 
     // Load source image
-    image = cv::imread("../../resources/plane.jpeg");
-	if (image.empty())
+    src = cv::imread("../../resources/capture_l_plane.png");
+	if (src.empty())
     {
 		std::cerr << "Not found input image..." << std::endl;
 		return -1;
 	}
-    cv::resize(image, image, cv::Size(), 0.6, 0.6);
-    result = image.clone();
 
-	// inRangeを用いて色抽出フィルタリング
-	cv::Scalar s_min = cv::Scalar(B_MIN, G_MIN, R_MIN);
-	cv::Scalar s_max = cv::Scalar(B_MAX, G_MAX, R_MAX);
-	cv::inRange(image, s_min, s_max, mask);
+    cv::Mat image = src.clone();
 
-    // マスク画像のOpening処理
-    cv::morphologyEx(mask, mask, cv::MORPH_OPEN, cv::Mat());
-    cv::threshold(mask, mask, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU); // 2値化（閾値を自動で設定）
+    // Step.1 対象領域の切り出し //
 
-    // Canny edge
-    // cv::blur(image, image, cv::Size(3, 3));
-    cv::Canny(mask, edges, 200, 600, 3);
+    // ボード領域抽出
+    board_mask = src.clone();
+    cv::blur(board_mask, board_mask, cv::Size(2, 2));
+    board_mask = extractColor(board_mask, cv::Scalar(0, 0, 0), cv::Scalar(100, 90, 60), 0, 0);
+    board_mask = detectEllipse(board_mask, 1500, 2000, cv::Scalar(0,0,255), -1);
 
-    cv::namedWindow("Canny result", cv::WINDOW_NORMAL);
-    cv::imshow("Canny result", edges);
-
-/*
-    // Voting
-    int diagonal = std::hypot(edges.rows, edges.cols);  // 平方根
-    cv::Mat accumlate = cv::Mat::zeros(2*diagonal, 180, CV_8UC1);
-    // cv::Mat accumlate = cv::Mat::zeros(2*diagonal, 180, CV_8UC3);
-
-    for (int x=0; x<edges.cols; x++)
+    for (int i=0; i<image.rows; i++)
     {
-        for (int y=0; y<edges.rows; y++)
+        for (int j=0; j<image.cols; j++)
         {
-            if (edges.at<uchar>(y, x) == 255)
-            {
-                for (int theta=0; theta<180; theta++)
-                {
-                    double rho = round( y*sin(deg2rad(theta)) + x*cos(deg2rad(theta)) ) + diagonal;
-                    accumlate.at<uchar>(rho, theta)+=2;
-                    // accumlate.at<cv::Vec3b>(rho, theta)[2]++;
-                }
-            }
+            if (board_mask.at<cv::Vec3b>(i,j) != cv::Vec3b(0, 0, 255)) image.at<cv::Vec3b>(i,j) = cv::Vec3b(0,255,0);
         }
     }
-    cv::resize(accumlate, accumlate, cv::Size(), 0.3*accumlate.rows/accumlate.cols, 0.3);   // 確認用の縦横比調整
 
+	// Redエリア抽出
+    red_mask = extractColor(image, cv::Scalar(0, 0, 220), cv::Scalar(190, 170, 255), 0, 1);
+	// Blueエリア抽出
+    blue_mask = extractColor(image, cv::Scalar(190, 65, 0), cv::Scalar(255, 150, 110), 0, 3);
 
-    // Sorting
-    std::vector<std::vector<int>> votes;
-    std::vector<int> tmp;
-    for (int rho=0; rho<accumlate.rows; rho++)
+    // 表示
+    // cv::namedWindow("red mask", cv::WINDOW_NORMAL);
+    // cv::imshow("red mask", red_mask);
+    // cv::imwrite("../result/red_mask.png", red_mask);
+    // cv::namedWindow("blue mask", cv::WINDOW_NORMAL);
+    // cv::imshow("blue mask", blue_mask);
+    // cv::imwrite("../result/blue_mask.png", blue_mask);
+
+    board_mask = red_mask + blue_mask;
+    cv::morphologyEx(board_mask, board_mask, cv::MORPH_OPEN, cv::Mat(), cv::Point(-1,-1), 1);
+    cv::morphologyEx(board_mask, board_mask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1,-1), 5);
+    cv::dilate(board_mask, board_mask, cv::Mat(), cv::Point(-1,-1), 4);
+    board_mask = detectEllipse(board_mask, 150, 20000, cv::Scalar(0,0,255), -1);
+
+    for (int i=0; i<image.rows; i++)
     {
-        for (int theta=0; theta<accumlate.cols; theta++)
+        for (int j=0; j<image.cols; j++)
         {
-            tmp.clear();
-            tmp.push_back(accumlate.at<uchar>(rho, theta)); tmp.push_back(rho); tmp.push_back(theta);
-            votes.push_back(tmp);
+            if (board_mask.at<cv::Vec3b>(i,j) != cv::Vec3b(0, 0, 255)) image.at<cv::Vec3b>(i,j) = cv::Vec3b(0,255,0);
         }
     }
-    std::sort(votes.begin(),votes.end(),[](const std::vector<int> &alpha,const std::vector<int> &beta){return alpha[0] > beta[0];});
 
-    // Check
-    for (int i=0; i<5; i++)
-    {
-        std::cout << "(vote, rho, theta) : " << votes[i][0] << "," << votes[i][1] << "," << votes[i][2] << std::endl;
-        // cv::circle(accumlate, cv::Point(votes[i][2],votes[i][1]), 15, 255, 1);
-    }
-    cv::namedWindow("Accumlation result", cv::WINDOW_NORMAL);
-    cv::imshow("Accumlation result", accumlate);
-    cv::imwrite("../result/hough_result.png", accumlate);
-*/
+    cv::namedWindow("target board", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
+    cv::imshow("target board", image);
+    cv::imwrite("../result/all_color.png", board_mask);
 
 
-    std::vector<cv::Vec4i> lines;
-    HoughLinesP( edges, lines, 1, CV_PI/180, 80, 30, 20 );
-    cv::cvtColor(edges, edges, CV_GRAY2BGR);
-    for( size_t i = 0; i < lines.size(); i++ )
-    {
-        cv::line( result, cv::Point(lines[i][0], lines[i][1]),
-                    cv::Point(lines[i][2], lines[i][3]), cv::Scalar(0,0,255), 2, 4 );
-    }
+    // Step.2 白色抽出 //
 
-    cv::namedWindow("result", cv::WINDOW_NORMAL);
-    cv::imshow("result", result);
+	// whiteエリア抽出
+    white_mask = extractColor(image, cv::Scalar(250, 250, 250), cv::Scalar(255, 255, 255), 0, 0);
+
+    cv::namedWindow("White area", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
+    cv::imshow("White area", white_mask);
+
+
+    // Step3. ラベリング //
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(white_mask, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);     // 楕円切り出し
+    // cv::max(contours, white_mask, white_mask);
+
 
     cv::waitKey(0);
     return 0;

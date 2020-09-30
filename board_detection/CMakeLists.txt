@@ -19,7 +19,6 @@ find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
 # 実行ファイル名とソース指定（ここではソースと同じ名前の実行ファイルを作ります）
-# add_executable( ${SOURCE_CODE} src/${SOURCE_CODE}.cpp )
 add_executable( ${SOURCE_CODE} src/${SOURCE_CODE}.cpp )
 
 #リンク先のライブラリを指定
