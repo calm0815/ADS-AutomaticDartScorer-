@@ -1,6 +1,11 @@
 #include <cmath>
 #include <opencv2/opencv.hpp>
 
+#include <opencv2/core/core.hpp>
+#include "opencv2/highgui/highgui.hpp"
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/features2d/features2d.hpp>
+
 #define deg2rad(deg) (deg*M_PI/180)
 
 cv::Mat extractColor(cv::Mat image, cv::Scalar range_min, cv::Scalar range_max, int opening, int closing)
@@ -19,8 +24,8 @@ cv::Mat detectEllipse(cv::Mat image, int threshold_min, int threshold_max, const
 {
     std::vector<std::vector<cv::Point>> detected_contours;
 
-    cv::findContours(image, detected_contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);     // 楕円切り出し
-    if (image.type() == 0) cv::cvtColor(image, image, CV_GRAY2BGR);
+    cv::findContours(image, detected_contours, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);     // 楕円切り出し
+    if (image.type() == 0) cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
 
     for (int i = 0; i < detected_contours.size(); ++i)
     {
@@ -29,7 +34,7 @@ cv::Mat detectEllipse(cv::Mat image, int threshold_min, int threshold_max, const
         cv::Mat pointsf;
         cv::Mat(detected_contours[i]).convertTo(pointsf, CV_32F);
         cv::RotatedRect box = cv::fitEllipse(pointsf);                  // 楕円フィッティング
-        cv::ellipse(image, box, color, thickness, CV_AA);   // 楕円の描画
+        cv::ellipse(image, box, color, thickness, cv::LINE_AA);   // 楕円の描画
     }
 
     return image;
@@ -94,25 +99,19 @@ int main(int argc, char *argv[])
         }
     }
 
-    cv::namedWindow("target board", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
+    cv::namedWindow("target board", cv::WINDOW_AUTOSIZE|cv::WINDOW_FREERATIO);
     cv::imshow("target board", image);
     cv::imwrite("../result/all_color.png", board_mask);
 
 
-    // Step.2 白色抽出 //
+    // Step.2 幾何変換 //
 
-	// whiteエリア抽出
-    white_mask = extractColor(image, cv::Scalar(250, 250, 250), cv::Scalar(255, 255, 255), 0, 0);
+    // FeatureDetector
+    cv::Ptr<cv::FeatureDetector> featureDetector;
+    cv::Ptr<cv::DescriptorExtractor> descriptorExtractor;
+    featureDetector = cv::FeatureDetector::create("SURF");
+    descriptorExtractor = cv::DescriptorExtractor::create("SURF");
 
-    cv::namedWindow("White area", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
-    cv::imshow("White area", white_mask);
-
-
-    // Step3. ラベリング //
-
-    std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(white_mask, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);     // 楕円切り出し
-    // cv::max(contours, white_mask, white_mask);
 
 
     cv::waitKey(0);
