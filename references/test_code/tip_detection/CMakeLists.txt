@@ -16,10 +16,16 @@ project( ${SOURCE_CODE} )
 find_package( OpenCV REQUIRED )
 
 #ヘッダファイルのパスを指定
-include_directories( ${OpenCV_INCLUDE_DIRS} )
+include_directories(
+    include
+    ${OpenCV_INCLUDE_DIRS}
+    )
 
 # 実行ファイル名とソース指定（ここではソースと同じ名前の実行ファイルを作ります）
-add_executable( ${SOURCE_CODE} src/${SOURCE_CODE}.cpp )
+add_executable( ${SOURCE_CODE}
+    src/tip_detection.cpp
+    src/main.cpp
+)
 # add_executable( ${SOURCE_CODE} src/camera_${SOURCE_CODE}.cpp )
 
 #リンク先のライブラリを指定
