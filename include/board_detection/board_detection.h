@@ -51,7 +51,7 @@ private:
     cv::Mat transformImage(cv::Mat input, cv::Mat transform_matrix, cv::Size image_size);   // 幾何変換
 
 public:
-    BoardDetection(cv::Mat image);
+    BoardDetection(const cv::Mat image, const bool isDebug);
     ~BoardDetection();
 
     void applyDetection(void);
