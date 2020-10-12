@@ -16,10 +16,16 @@ project( ${SOURCE_CODE} )
 find_package( OpenCV REQUIRED )
 
 #ヘッダファイルのパスを指定
-include_directories( ${OpenCV_INCLUDE_DIRS} )
+include_directories(
+    include
+    ${OpenCV_INCLUDE_DIRS}
+    )
 
 # 実行ファイル名とソース指定（ここではソースと同じ名前の実行ファイルを作ります）
-add_executable( ${SOURCE_CODE} src/${SOURCE_CODE}.cpp )
+add_executable( ${SOURCE_CODE}
+    src/${SOURCE_CODE}.cpp
+    src/main.cpp
+    )
 
 #リンク先のライブラリを指定
 target_link_libraries( ${SOURCE_CODE} ${OpenCV_LIBS} )

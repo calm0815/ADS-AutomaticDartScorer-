@@ -1,14 +1,25 @@
-#include <cmath>
-#include <opencv2/opencv.hpp>
+#include "board_detection/board_detection.h"
 
-// #include <opencv2/core/core.hpp>
-// #include "opencv2/highgui/highgui.hpp"
-// #include <opencv2/imgproc/imgproc.hpp>
-// #include <opencv2/features2d/features2d.hpp>
+BoardDetection::BoardDetection(cv::Mat image)
+:   src_(image),
+    isDebug_(false)
+{
+    std::cout << "[BoardDetection] initialized !" << std::endl;
+}
 
-#define deg2rad(deg) (deg*M_PI/180)
+BoardDetection::~BoardDetection()
+{
+    std::cout << "[BoardDetection] destracted !" << std::endl;
+}
 
-cv::Mat extractColor(cv::Mat image, cv::Scalar range_min, cv::Scalar range_max, int opening, int closing)
+void BoardDetection::applyDetection(void)
+{
+    board_image_ = extractBoardArea(src_);
+    transform_matrix_ = calculateTransformMatrix(board_image_, transform_reference_image_);
+    transformed_image_ = transformImage(src_, transform_matrix_, cv::Size(transform_reference_image_.cols, transform_reference_image_.rows));
+}
+
+cv::Mat BoardDetection::extractColor(cv::Mat image, cv::Scalar range_min, cv::Scalar range_max, int opening, int closing)
 {
     cv::Mat mask;
 	cv::inRange(image, range_min, range_max, mask);
@@ -20,7 +31,7 @@ cv::Mat extractColor(cv::Mat image, cv::Scalar range_min, cv::Scalar range_max, 
     return mask;
 }
 
-cv::Mat detectEllipse(cv::Mat image, int threshold_min, int threshold_max, const cv::Scalar color, int thickness = 1)
+cv::Mat BoardDetection::detectEllipse(cv::Mat image, int threshold_min, int threshold_max, const cv::Scalar color, int thickness)
 {
     std::vector<std::vector<cv::Point>> detected_contours;
 
@@ -40,34 +51,13 @@ cv::Mat detectEllipse(cv::Mat image, int threshold_min, int threshold_max, const
     return image;
 }
 
-int main(int argc, char *argv[])
+cv::Mat BoardDetection::extractBoardArea(cv::Mat input)
 {
-    cv::Mat src, result;
-    cv::Mat red_mask, blue_mask, black_mask, white_mask;
-    cv::Mat edges;
-
-    // Load source image
-    src = cv::imread("../../resources/capture_l_plane.png");
-	if (src.empty())
-    {
-		std::cerr << "Not found input image ..." << std::endl;
-		return -1;
-	}
-
-    cv::Mat image = src.clone();
-
-    cv::namedWindow("source image", cv::WINDOW_AUTOSIZE|cv::WINDOW_FREERATIO);
-    cv::imshow("source image", src);
-    // cv::waitKey(0);
-
-    // Step.1 対象領域の切り出し //
-
-    // ボード領域抽出
-    cv::Mat board_image = image.clone();
-    cv::Mat board_mask = image.clone();
+    cv::Mat board_image = input.clone();
+    cv::Mat board_mask = input.clone();
     cv::blur(board_mask, board_mask, cv::Size(2, 2));
-    board_mask = extractColor(board_mask, cv::Scalar(0, 0, 0), cv::Scalar(100, 90, 60), 0, 0);
-    board_mask = detectEllipse(board_mask, 1500, 2000, cv::Scalar(0,0,255), -1);
+    board_mask = extractColor(board_mask, board_color_range_min_, board_color_range_max_, 0, 0);
+    board_mask = detectEllipse(board_mask, board_detection_threshold_min_, board_detection_threshold_max_, cv::Scalar(0,0,255), -1);
 
     for (int i=0; i<board_image.rows; i++)
     {
@@ -77,22 +67,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    cv::namedWindow("board extraction", cv::WINDOW_AUTOSIZE|cv::WINDOW_FREERATIO);
-    cv::imshow("board extraction", board_image);
-    // cv::waitKey(0);
+    return board_image;
+}
 
-
-    // Step.2 幾何変換 //
-    
-    // Load front view image
-    cv::Mat front_image = cv::imread("../../resources/front_view.jpg");
-	if (front_image.empty())
-    {
-		std::cerr << "Not found front view image ..." << std::endl;
-		return -1;
-	}
-    cv::blur(front_image, front_image, cv::Size(2, 2));
-
+cv::Mat BoardDetection::calculateTransformMatrix(cv::Mat input, cv::Mat reference_image)
+{
     // Feature Detection
     std::vector<cv::KeyPoint> keypoints1;
     std::vector<cv::KeyPoint> keypoints2;
@@ -100,31 +79,21 @@ int main(int argc, char *argv[])
 
     cv::Mat desc1, desc2;
 
-    feature->detectAndCompute(board_image, cv::noArray(), keypoints1, desc1);
-    feature->detectAndCompute(front_image, cv::noArray(), keypoints2, desc2);
+    feature->detectAndCompute(input, cv::noArray(), keypoints1, desc1);
+    feature->detectAndCompute(reference_image, cv::noArray(), keypoints2, desc2);
 
     if (desc2.rows == 0){
         std::cerr << "WARNING: 特徴点検出できず" << std::endl;
-        return -1;
     }
 
-    drawKeypoints(board_image, keypoints1, board_image, cv::Scalar(255, 0, 255), cv::DrawMatchesFlags::DRAW_OVER_OUTIMG);
-    drawKeypoints(front_image, keypoints2, front_image, cv::Scalar(255, 0, 255), cv::DrawMatchesFlags::DRAW_OVER_OUTIMG);
-
-    cv::namedWindow("keypoints for [source image]", cv::WINDOW_AUTOSIZE|cv::WINDOW_FREERATIO);
-    cv::imshow("keypoints for [source image]", board_image);
-    // cv::waitKey(0);
-
-    cv::namedWindow("keypoints for [front view image]", cv::WINDOW_AUTOSIZE|cv::WINDOW_FREERATIO);
-    cv::imshow("keypoints for [front view image]", front_image);
-    // cv::waitKey(0);
+    // drawKeypoints(board_image_, keypoints1, board_image_, cv::Scalar(255, 0, 255), cv::DrawMatchesFlags::DRAW_OVER_OUTIMG);
+    // drawKeypoints(reference_image, keypoints2, reference_image, cv::Scalar(255, 0, 255), cv::DrawMatchesFlags::DRAW_OVER_OUTIMG);
 
     // Matching
     cv::BFMatcher matcher(feature->defaultNorm());
     std::vector<std::vector<cv::DMatch >> knn_matches;
     matcher.knnMatch(desc1, desc2, knn_matches, 5);
 
-    const auto match_par = .94f; //対応点のしきい値
     std::vector<cv::DMatch> good_matches;
 
     std::vector<cv::Point2f> match_point1;
@@ -136,7 +105,7 @@ int main(int argc, char *argv[])
         auto dist2 = knn_matches[i][1].distance;
 
         //良い点を残す（最も類似する点と次に類似する点の類似度から）
-        if (dist1 <= dist2 * match_par)
+        if (dist1 <= dist2 * feature_matching_threshold_)
         {
             good_matches.push_back(knn_matches[i][0]);
             match_point1.push_back(keypoints1[knn_matches[i][0].queryIdx].pt);
@@ -157,48 +126,78 @@ int main(int argc, char *argv[])
 
     std::cout << H.size() << std::endl;
 
-    result = src.clone();
-    cv::warpPerspective(result, result, H, cv::Size(front_image.cols, front_image.rows));
+    return H;
+}
 
-    cv::imshow("the result of geometric transformation", result);
-    cv::waitKey(0);
+cv::Mat BoardDetection::transformImage(cv::Mat input, cv::Mat transform_matrix, cv::Size image_size)
+{
+    cv::warpPerspective(input, input, transform_matrix, image_size);
+    return input;
+}
 
+cv::Mat BoardDetection::getBoardImage()
+{
+    return board_image_;
+}
 
-    // Step3. 得点領域抽出 //
+cv::Mat BoardDetection::getTransformedImage()
+{
+    return transformed_image_;
+}
 
-    // cv::warpPerspective(image, image, H, cv::Size(result.cols, result.rows));
+cv::Mat BoardDetection::getTransformMatrix()
+{
+    return transform_matrix_;
+}
 
-	// // Redエリア抽出
-    // red_mask = extractColor(image, cv::Scalar(0, 0, 220), cv::Scalar(190, 170, 255), 0, 1);
-	// // Blueエリア抽出
-    // blue_mask = extractColor(image, cv::Scalar(190, 65, 0), cv::Scalar(255, 150, 110), 0, 3);
+void BoardDetection::setBoardColorRange(cv::Scalar min, cv::Scalar max)
+{
+    board_color_range_min_ = min;
+    board_color_range_max_ = max;
+}
 
-    // // 表示
-    // cv::namedWindow("red mask", cv::WINDOW_NORMAL);
-    // cv::imshow("red mask", red_mask);
-    // // cv::imwrite("../result/red_mask.png", red_mask);
-    // cv::namedWindow("blue mask", cv::WINDOW_NORMAL);
-    // cv::imshow("blue mask", blue_mask);
-    // // cv::imwrite("../result/blue_mask.png", blue_mask);
+void BoardDetection::setBlueColorRange(cv::Scalar min, cv::Scalar max)
+{
+    blue_color_range_min_ = min;
+    blue_color_range_max_ = max;
+}
 
-    // board_mask = red_mask + blue_mask;
-    // cv::morphologyEx(board_mask, board_mask, cv::MORPH_OPEN, cv::Mat(), cv::Point(-1,-1), 1);
-    // cv::morphologyEx(board_mask, board_mask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1,-1), 5);
-    // cv::dilate(board_mask, board_mask, cv::Mat(), cv::Point(-1,-1), 4);
-    // board_mask = detectEllipse(board_mask, 150, 20000, cv::Scalar(0,0,255), -1);
+void BoardDetection::setGreenColorRange(cv::Scalar min, cv::Scalar max)
+{
+    green_color_range_min_ = min;
+    green_color_range_max_ = max;
+}
 
-    // for (int i=0; i<image.rows; i++)
-    // {
-    //     for (int j=0; j<image.cols; j++)
-    //     {
-    //         if (board_mask.at<cv::Vec3b>(i,j) != cv::Vec3b(0, 0, 255)) image.at<cv::Vec3b>(i,j) = cv::Vec3b(0,255,0);
-    //     }
-    // }
+void BoardDetection::setRedColorRange(cv::Scalar min, cv::Scalar max)
+{
+    red_color_range_min_ = min;
+    red_color_range_max_ = max;
+}
 
-    // cv::imshow("target board", image);
-    // cv::waitKey(0);
-    // cv::imwrite("../result/all_color.png", board_mask);
+void BoardDetection::setWhiteColorRange(cv::Scalar min, cv::Scalar max)
+{
+    white_color_range_min_ = min;
+    white_color_range_max_ = max;
+}
 
-    // cv::waitKey(0);
-    return 0;
+void BoardDetection::setBlackColorRange(cv::Scalar min, cv::Scalar max)
+{
+    black_color_range_min_ = min;
+    black_color_range_max_ = max;
+}
+
+void BoardDetection::setBoardEllipseThreshold(const int min, const int max)
+{
+    board_detection_threshold_min_ = min;
+    board_detection_threshold_max_ = max;
+}
+
+void BoardDetection::setFeatureMatchingThreshold(const float threshold)
+{
+    feature_matching_threshold_ = threshold;
+}
+
+void BoardDetection::setReferenceImage(cv::Mat reference_image)
+{
+    transform_reference_image_ = reference_image.clone();
 }
