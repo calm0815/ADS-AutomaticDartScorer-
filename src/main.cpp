@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
     cv::Mat right_transform_matrix = right_board_detection.getTransformMatrix();
     cv::Mat right_front_view = right_board_detection.getTransformedImage();
 
+    
 
     cv::waitKey(0);
     return 0;
