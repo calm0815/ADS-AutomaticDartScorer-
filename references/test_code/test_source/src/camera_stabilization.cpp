@@ -72,8 +72,9 @@ int main(int argc, char **argv)
     std::ofstream out_new_transform("new_prev_to_cur_transformation.txt");
 
     cv::VideoCapture cap;
-    std::string filepath = "../resources/play_0.mov";
-    cap.open(filepath);
+
+    // カメラを起動する
+	cap.open(2); // incamera => 0, webcamera => 2
 
     assert(cap.isOpened());
 
