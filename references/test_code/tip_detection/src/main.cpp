@@ -1,6 +1,8 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
+#include "tip_detection/tip_detection.h"
+
 // yellow
 const int B_MAX = 70;
 const int B_MIN = 0;
@@ -14,13 +16,15 @@ int main(int argc, char *argv[])
     cv::Mat image;
     cv::Mat mask, result;
 
-    image = cv::imread("../../resources/yellow.jpeg");
-    cv::resize(image, image, cv::Size(), 0.3, 0.3);
+    TipDetection tip_detection();
+
+    image = cv::imread("../../../../resources/yellow.jpeg");
 	if (image.empty())
     {
-		std::cerr << "入力画像が見つかりません" << std::endl;
+		std::cerr << "not found input image ..." << std::endl;
 		return -1;
 	}
+    cv::resize(image, image, cv::Size(), 0.3, 0.3);
 
 	// inRangeを用いて色抽出フィルタリング
 	cv::Scalar s_min = cv::Scalar(B_MIN, G_MIN, R_MIN);
