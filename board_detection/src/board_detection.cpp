@@ -1,14 +1,15 @@
 #include "board_detection/board_detection.h"
 
 BoardDetection::BoardDetection(cv::Mat image)
-:   src_(image)
+:   src_(image),
+    isDebug_(false)
 {
-    std::cout << "class initialized !" << std::endl;
+    std::cout << "[BoardDetection] initialized !" << std::endl;
 }
 
 BoardDetection::~BoardDetection()
 {
-    std::cout << "class deleted !" << std::endl;
+    std::cout << "[BoardDetection] destracted !" << std::endl;
 }
 
 void BoardDetection::applyDetection(void)
@@ -55,8 +56,8 @@ cv::Mat BoardDetection::extractBoardArea(cv::Mat input)
     cv::Mat board_image = input.clone();
     cv::Mat board_mask = input.clone();
     cv::blur(board_mask, board_mask, cv::Size(2, 2));
-    board_mask = extractColor(board_mask, cv::Scalar(0, 0, 0), cv::Scalar(100, 90, 60), 0, 0);
-    board_mask = detectEllipse(board_mask, 1500, 2000, cv::Scalar(0,0,255), -1);
+    board_mask = extractColor(board_mask, board_color_range_min_, board_color_range_max_, 0, 0);
+    board_mask = detectEllipse(board_mask, board_detection_threshold_min_, board_detection_threshold_max_, cv::Scalar(0,0,255), -1);
 
     for (int i=0; i<board_image.rows; i++)
     {
@@ -93,7 +94,6 @@ cv::Mat BoardDetection::calculateTransformMatrix(cv::Mat input, cv::Mat referenc
     std::vector<std::vector<cv::DMatch >> knn_matches;
     matcher.knnMatch(desc1, desc2, knn_matches, 5);
 
-    const auto match_par = .94f; //対応点のしきい値
     std::vector<cv::DMatch> good_matches;
 
     std::vector<cv::Point2f> match_point1;
@@ -105,7 +105,7 @@ cv::Mat BoardDetection::calculateTransformMatrix(cv::Mat input, cv::Mat referenc
         auto dist2 = knn_matches[i][1].distance;
 
         //良い点を残す（最も類似する点と次に類似する点の類似度から）
-        if (dist1 <= dist2 * match_par)
+        if (dist1 <= dist2 * feature_matching_threshold_)
         {
             good_matches.push_back(knn_matches[i][0]);
             match_point1.push_back(keypoints1[knn_matches[i][0].queryIdx].pt);
@@ -148,6 +148,53 @@ cv::Mat BoardDetection::getTransformedImage()
 cv::Mat BoardDetection::getTransformMatrix()
 {
     return transform_matrix_;
+}
+
+void BoardDetection::setBoardColorRange(cv::Scalar min, cv::Scalar max)
+{
+    board_color_range_min_ = min;
+    board_color_range_max_ = max;
+}
+
+void BoardDetection::setBlueColorRange(cv::Scalar min, cv::Scalar max)
+{
+    blue_color_range_min_ = min;
+    blue_color_range_max_ = max;
+}
+
+void BoardDetection::setGreenColorRange(cv::Scalar min, cv::Scalar max)
+{
+    green_color_range_min_ = min;
+    green_color_range_max_ = max;
+}
+
+void BoardDetection::setRedColorRange(cv::Scalar min, cv::Scalar max)
+{
+    red_color_range_min_ = min;
+    red_color_range_max_ = max;
+}
+
+void BoardDetection::setWhiteColorRange(cv::Scalar min, cv::Scalar max)
+{
+    white_color_range_min_ = min;
+    white_color_range_max_ = max;
+}
+
+void BoardDetection::setBlackColorRange(cv::Scalar min, cv::Scalar max)
+{
+    black_color_range_min_ = min;
+    black_color_range_max_ = max;
+}
+
+void BoardDetection::setBoardEllipseThreshold(const int min, const int max)
+{
+    board_detection_threshold_min_ = min;
+    board_detection_threshold_max_ = max;
+}
+
+void BoardDetection::setFeatureMatchingThreshold(const float threshold)
+{
+    feature_matching_threshold_ = threshold;
 }
 
 void BoardDetection::setReferenceImage(cv::Mat reference_image)
