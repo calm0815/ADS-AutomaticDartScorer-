@@ -31,6 +31,7 @@ public:
 
     void applyDetection();
 
+    void updateSourceImage(cv::Mat input);
     void setYellowTipRange(cv::Scalar min, cv::Scalar max);
     void setGreenTipRange(cv::Scalar min, cv::Scalar max);
     cv::Mat getTipMask();

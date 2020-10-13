@@ -69,6 +69,11 @@ cv::Point TipDetection::estimateTipPosition(cv::Mat mask, std::string direction)
     return position;
 }
 
+void TipDetection::updateSourceImage(cv::Mat input)
+{
+    src_ = input;
+}
+
 void TipDetection::setYellowTipRange(cv::Scalar min, cv::Scalar max)
 {
     yellow_tip_color_range_min_ = min;
