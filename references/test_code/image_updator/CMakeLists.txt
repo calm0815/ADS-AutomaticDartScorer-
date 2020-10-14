@@ -1,6 +1,6 @@
 # 変数SOURCE_CORDEを宣言し、opencv_testという値を入れる。
 # cmake -D SOURCE_CODE=(ソース名)で上書き可
-set(SOURCE_CODE score_detection CACHE NAME "Target object name")
+set(SOURCE_CODE image_updator CACHE NAME "Target object name")
 
 # CMakeの最低バージョンを記述
 cmake_minimum_required(VERSION 2.8)
@@ -23,9 +23,7 @@ include_directories(
 
 # 実行ファイル名とソース指定（ここではソースと同じ名前の実行ファイルを作ります）
 add_executable( ${SOURCE_CODE}
-    src/board_detection.cpp
-    src/image_updator.cpp
-    src/tip_detection.cpp
+    src/${SOURCE_CODE}.cpp
     src/main.cpp
     )
 
