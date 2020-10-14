@@ -65,7 +65,16 @@ int main(int argc, char *argv[])
 	}
 
     ImageUpdator image_updator(false);
+    TipDetection tip_detection(true);
     bool isUpdated = false;
+
+    // set yellow range
+    cv::Scalar yellow_min = cv::Scalar(0, 100, 100);
+    cv::Scalar yellow_max = cv::Scalar(70, 200, 210);
+    tip_detection.setYellowTipRange(yellow_min, yellow_max);
+
+    cv::Mat image = left_image.clone();
+    cv::Ptr<cv::BackgroundSubtractor> sub = cv::createBackgroundSubtractorMOG2();
 
     while (true)
     {
@@ -81,8 +90,34 @@ int main(int argc, char *argv[])
         {
             cv::namedWindow("the next sequene frame", cv::WINDOW_AUTOSIZE|cv::WINDOW_FREERATIO);
             cv::imshow("the next sequene frame", image_updator.getNextSequenceImage());
-            if (!isUpdated)
+
+            if (!isUpdated)     // 画像更新時に一度だけ起動。
             {
+                cv::Mat next_image = image_updator.getNextSequenceImage().clone();
+                cv::Mat diff_mask;
+                if (!next_image.empty()) sub->apply(next_image, diff_mask);
+                cv::threshold(diff_mask, diff_mask, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU); // 2値化（閾値を自動で設定）
+
+                cv::Mat croped_image;
+                // next_image.copyTo(next_image, diff_mask);
+                cv::bitwise_and(next_image, next_image, croped_image, diff_mask);
+
+                cv::namedWindow("diff image", cv::WINDOW_NORMAL);
+                cv::imshow("diff image", diff_mask);
+                cv::namedWindow("next image", cv::WINDOW_NORMAL);
+                cv::imshow("next image", croped_image);
+
+                tip_detection.applyDetection(croped_image);
+                cv::Mat mask = tip_detection.getTipMask();
+                cv::Point position = tip_detection.getTipPosition();
+
+                std::cout << croped_image.type() << std::endl;
+
+                // 表示
+                cv::namedWindow("result image", cv::WINDOW_NORMAL);
+                cv::imshow("result image", mask);
+                cv::imwrite("../resource/result.png", croped_image);
+
                 std::cout << "got it !" << std::endl;
                 isUpdated = true;
             }

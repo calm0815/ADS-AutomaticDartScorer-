@@ -26,12 +26,13 @@ private:
     cv::Point estimateTipPosition(cv::Mat mask, std::string direction);
 
 public:
-    TipDetection(const cv::Mat src, const bool isDebug);
+    TipDetection(const bool isDebug);
     ~TipDetection();
 
-    void applyDetection();
+    void applyDetection(cv::Mat src);
 
     void updateSourceImage(cv::Mat input);
+    void setImage(cv::Mat image);
     void setYellowTipRange(cv::Scalar min, cv::Scalar max);
     void setGreenTipRange(cv::Scalar min, cv::Scalar max);
     cv::Mat getTipMask();

@@ -1,8 +1,7 @@
 #include "tip_detection/tip_detection.h"
 
-TipDetection::TipDetection(const cv::Mat src, const bool isDebug)
-:   src_(src),
-    isDebug_(isDebug)
+TipDetection::TipDetection(const bool isDebug)
+:   isDebug_(isDebug)
 {
     std::cout << "[TipDetection] is initialized." << std::endl;
 }
@@ -12,8 +11,9 @@ TipDetection::~TipDetection()
     std::cout << "[TipDetection] is destracted." << std::endl;
 }
 
-void TipDetection::applyDetection()
+void TipDetection::applyDetection(cv::Mat src)
 {
+    src_ = src.clone();
     tip_mask_ = extractColor(src_, yellow_tip_color_range_min_, yellow_tip_color_range_max_, 1, 0);
     tip_position_ = estimateTipPosition(tip_mask_, "left");
 }
