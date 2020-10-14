@@ -15,8 +15,9 @@ def changeColor(val):
     cv2.imshow("img", mask_image)
 
 # 画像の読み込み
-img = cv2.imread("../../resources/capture_l_plane.png", 1)
-img = cv2.resize(img , (int(img.shape[1]*0.5), int(img.shape[0]*0.5)))
+# img = cv2.imread("../../../../resources/capture_l_plane.png", 1)
+img = cv2.imread("../../../../resources/result.png", 1)
+# img = cv2.resize(img , (int(img.shape[1]*0.5), int(img.shape[0]*0.5)))
 # ウィンドウのサイズを変更可能にする
 cv2.namedWindow("img", cv2.WINDOW_NORMAL)
 
