@@ -24,6 +24,8 @@ include_directories(
 # 実行ファイル名とソース指定（ここではソースと同じ名前の実行ファイルを作ります）
 add_executable( ${SOURCE_CODE}
     src/board_detection.cpp
+    src/image_updator.cpp
+    src/tip_detection.cpp
     src/main.cpp
     )
 

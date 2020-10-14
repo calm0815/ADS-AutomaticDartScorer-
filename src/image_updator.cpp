@@ -34,7 +34,6 @@ void ImageUpdator::updateFrame(cv::Mat image)
                 if (!isUpdated_)
                 {
                     next_sequence_ = frame_.clone();
-                    std::cout << "cloned !" << std::endl;
                     isUpdated_ = true;
                 }
             }
@@ -58,7 +57,7 @@ void ImageUpdator::updateFrame(cv::Mat image)
         }
     }
 
-    std::cout << counter_ << " : " << flag_ << std::endl;
+    if (isDebug_) std::cout << counter_ << " : " << flag_ << std::endl;
 }
 
 cv::Mat ImageUpdator::getFrame()
@@ -81,7 +80,7 @@ bool ImageUpdator::getUpdateFlag()
     return isUpdated_;
 }
 
-void ImageUpdator::setFlag(const bool flag)
+void ImageUpdator::setUpdateFlag(const bool flag)
 {
-    flag_ = flag;
+    isUpdated_ = flag_;
 }

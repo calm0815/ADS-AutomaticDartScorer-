@@ -32,7 +32,7 @@ public:
     cv::Mat getDiffFrame();
     cv::Mat getNextSequenceImage();
     bool getUpdateFlag();
-    void setFlag(const bool flag);
+    void setUpdateFlag(const bool flag);
 };
 
 #endif
