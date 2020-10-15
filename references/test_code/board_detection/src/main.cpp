@@ -8,14 +8,14 @@
 int main(int argc, char *argv[])
 {
     // Load left image
-    cv::Mat left_image = cv::imread("../../resources/capture_l_plane.png");
+    cv::Mat left_image = cv::imread("../../../../resources/capture_l_plane.png");
 	if (left_image.empty())
     {
 		std::cerr << "Not found input image ..." << std::endl;
 		return -1;
 	}
     // Load right image
-    cv::Mat right_image = cv::imread("../../resources/capture_r_plane.png");
+    cv::Mat right_image = cv::imread("../../../../resources/capture_r_plane.png");
 	if (right_image.empty())
     {
 		std::cerr << "Not found input image ..." << std::endl;
@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     BoardDetection right_board_detection(right_image);
 
     // Load front view image
-    cv::Mat front_image = cv::imread("../../resources/front_view.jpg");
+    cv::Mat front_image = cv::imread("../../../../resources/front_view.jpg");
 	if (front_image.empty())
     {
 		std::cerr << "Not found front view image ..." << std::endl;
@@ -56,6 +56,8 @@ int main(int argc, char *argv[])
     cv::imshow("the result of geometric transformation [left image]", left_board_detection.getTransformedImage());
     cv::namedWindow("the result of geometric transformation [right image]", cv::WINDOW_AUTOSIZE|cv::WINDOW_FREERATIO);
     cv::imshow("the result of geometric transformation [right image]", right_board_detection.getTransformedImage());
+
+    std::cout << left_board_detection.getTransformMatrix() << std::endl;
 
 
     // Step3. 得点領域抽出 //
