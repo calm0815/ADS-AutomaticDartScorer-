@@ -1,4 +1,5 @@
 #include <cmath>
+#include <time.h>
 #include <opencv2/opencv.hpp>
 
 #include "board_detection/board_detection.h"
@@ -50,6 +51,10 @@ int calcScore(const double mag, const double angle)
 
 int main(int argc, char *argv[])
 {
+    clock_t time;
+
+    time = clock();
+
     // Load left image
     cv::Mat left_image = loadImageFromPath("../resources/capture_l_plane.png").clone();
     // Load right image
@@ -58,6 +63,8 @@ int main(int argc, char *argv[])
     cv::Mat front_image = loadImageFromPath("../resources/front_view.jpg").clone();
     cv::blur(front_image, front_image, cv::Size(2, 2));
 
+    time = clock() - time;
+    std::cout << "line " << __LINE__ << " process time : " << (double)(time)/CLOCKS_PER_SEC << std::endl;
 
     /* Board detection */
 
@@ -65,16 +72,29 @@ int main(int argc, char *argv[])
     BoardDetection right_board_detection(right_image, false);
 
     left_board_detection.setBoardColorRange(cv::Scalar(0, 0, 0), cv::Scalar(100, 90, 60));
+    time = clock() - time;
+    std::cout << "line " << __LINE__ << " process time : " << (double)(time)/CLOCKS_PER_SEC << std::endl;
     left_board_detection.setBoardEllipseThreshold(1500, 2000);
+    time = clock() - time;
+    std::cout << "line " << __LINE__ << " process time : " << (double)(time)/CLOCKS_PER_SEC << std::endl;
     left_board_detection.setFeatureMatchingThreshold(.94f);
+    time = clock() - time;
+    std::cout << "line " << __LINE__ << " process time : " << (double)(time)/CLOCKS_PER_SEC << std::endl;
     left_board_detection.setReferenceImage(front_image);
+    time = clock() - time;
+    std::cout << "line " << __LINE__ << " process time : " << (double)(time)/CLOCKS_PER_SEC << std::endl;
     left_board_detection.applyDetection();
+    time = clock() - time;
+    std::cout << "line " << __LINE__ << " process time : " << (double)(time)/CLOCKS_PER_SEC << std::endl;
 
     right_board_detection.setBoardColorRange(cv::Scalar(0, 0, 0), cv::Scalar(100, 95, 90));
     right_board_detection.setBoardEllipseThreshold(1500, 2000);
     right_board_detection.setFeatureMatchingThreshold(.84f);
     right_board_detection.setReferenceImage(front_image);
     right_board_detection.applyDetection();
+
+    time = clock() - time;
+    std::cout << "line " << __LINE__ << " process time : " << (double)(time)/CLOCKS_PER_SEC << std::endl;
 
     cv::Mat left_transform_matrix = left_board_detection.getTransformMatrix();
     cv::Mat left_front_view = left_board_detection.getTransformedImage();

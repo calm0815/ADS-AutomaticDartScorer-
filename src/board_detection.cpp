@@ -2,8 +2,10 @@
 
 BoardDetection::BoardDetection(const cv::Mat image, const bool isDebug)
 :   src_(image),
-    isDebug_(isDebug)
+    isDebug_(isDebug),
+    time_(clock())
 {
+    time_ = clock();
     std::cout << "[BoardDetection] initialized !" << std::endl;
 }
 
@@ -14,9 +16,15 @@ BoardDetection::~BoardDetection()
 
 void BoardDetection::applyDetection(void)
 {
-    board_image_ = extractBoardArea(src_);
-    transform_matrix_ = calculateTransformMatrix(board_image_, transform_reference_image_);
-    transformed_image_ = transformImage(src_, transform_matrix_, cv::Size(transform_reference_image_.cols, transform_reference_image_.rows));
+    board_image_ = extractBoardArea(&src_);
+    time_ = clock() - time_;
+    std::cout << "[BoardDetection] line " << __LINE__ << " process time : " << (double)(time_)/CLOCKS_PER_SEC << std::endl;
+    transform_matrix_ = calculateTransformMatrix(&board_image_, &transform_reference_image_);
+    time_ = clock() - time_;
+    std::cout << "[BoardDetection] line " << __LINE__ << " process time : " << (double)(time_)/CLOCKS_PER_SEC << std::endl;
+    transformed_image_ = transformImage(&src_, &transform_matrix_, cv::Size(transform_reference_image_.cols, transform_reference_image_.rows));
+    time_ = clock() - time_;
+    std::cout << "[BoardDetection] line " << __LINE__ << " process time : " << (double)(time_)/CLOCKS_PER_SEC << std::endl;
 }
 
 cv::Mat BoardDetection::extractColor(cv::Mat image, cv::Scalar range_min, cv::Scalar range_max, int opening, int closing)
@@ -51,19 +59,19 @@ cv::Mat BoardDetection::detectEllipse(cv::Mat image, int threshold_min, int thre
     return image;
 }
 
-cv::Mat BoardDetection::extractBoardArea(cv::Mat input)
+cv::Mat BoardDetection::extractBoardArea(cv::Mat* input)
 {
-    cv::Mat board = input.clone();
-    cv::Mat board_mask = input.clone();
-    cv::blur(board_mask, board_mask, cv::Size(2, 2));
-    board_mask = extractColor(board_mask, board_color_range_min_, board_color_range_max_, 0, 0);
-    board_mask = detectEllipse(board_mask, board_detection_threshold_min_, board_detection_threshold_max_, cv::Scalar(0,0,255), -1);
+    cv::Mat* board = input;
+    cv::Mat* board_mask = input;
+    cv::blur(*board_mask, *board_mask, cv::Size(2, 2));
+    *board_mask = extractColor(*board_mask, board_color_range_min_, board_color_range_max_, 0, 0);
+    *board_mask = detectEllipse(*board_mask, board_detection_threshold_min_, board_detection_threshold_max_, cv::Scalar(0,0,255), -1);
 
-    for (int i=0; i<board.rows; i++)
+    for (int i=0; i<board->rows; i++)
     {
-        for (int j=0; j<board.cols; j++)
+        for (int j=0; j<board->cols; j++)
         {
-            if (board_mask.at<cv::Vec3b>(i,j) != cv::Vec3b(0, 0, 255)) board.at<cv::Vec3b>(i,j) = cv::Vec3b(0,255,0);
+            if (board_mask->at<cv::Vec3b>(i,j) != cv::Vec3b(0, 0, 255)) board->at<cv::Vec3b>(i,j) = cv::Vec3b(0,255,0);
         }
     }
 
@@ -71,13 +79,13 @@ cv::Mat BoardDetection::extractBoardArea(cv::Mat input)
     if (isDebug_)
     {
         cv::namedWindow("the result of board extraction.", cv::WINDOW_AUTOSIZE|cv::WINDOW_FREERATIO);
-        cv::imshow("the result of board extraction.", board);
+        cv::imshow("the result of board extraction.", *board);
     }
 
-    return board;
+    return *board;
 }
 
-cv::Mat BoardDetection::calculateTransformMatrix(cv::Mat input, cv::Mat reference_image)
+cv::Mat BoardDetection::calculateTransformMatrix(cv::Mat* input, cv::Mat* reference_image)
 {
     // Feature Detection
     std::vector<cv::KeyPoint> keypoints1;
@@ -86,8 +94,8 @@ cv::Mat BoardDetection::calculateTransformMatrix(cv::Mat input, cv::Mat referenc
 
     cv::Mat desc1, desc2;
 
-    feature->detectAndCompute(input, cv::noArray(), keypoints1, desc1);
-    feature->detectAndCompute(reference_image, cv::noArray(), keypoints2, desc2);
+    feature->detectAndCompute(*input, cv::noArray(), keypoints1, desc1);
+    feature->detectAndCompute(*reference_image, cv::noArray(), keypoints2, desc2);
 
     if (desc2.rows == 0){
         std::cerr << "WARNING: 特徴点検出できず" << std::endl;
@@ -96,12 +104,12 @@ cv::Mat BoardDetection::calculateTransformMatrix(cv::Mat input, cv::Mat referenc
     // Debug
     if (isDebug_)
     {
-        drawKeypoints(input, keypoints1, input, cv::Scalar(255, 0, 255), cv::DrawMatchesFlags::DRAW_OVER_OUTIMG);
-        drawKeypoints(reference_image, keypoints2, reference_image, cv::Scalar(255, 0, 255), cv::DrawMatchesFlags::DRAW_OVER_OUTIMG);
+        drawKeypoints(*input, keypoints1, *input, cv::Scalar(255, 0, 255), cv::DrawMatchesFlags::DRAW_OVER_OUTIMG);
+        drawKeypoints(*reference_image, keypoints2, *reference_image, cv::Scalar(255, 0, 255), cv::DrawMatchesFlags::DRAW_OVER_OUTIMG);
         cv::namedWindow("the key points for input image.", cv::WINDOW_AUTOSIZE|cv::WINDOW_FREERATIO);
-        cv::imshow("the key points for input image.", input);
+        cv::imshow("the key points for input image.", *input);
         cv::namedWindow("the key points for reference image.", cv::WINDOW_AUTOSIZE|cv::WINDOW_FREERATIO);
-        cv::imshow("the key points for reference image.", reference_image);
+        cv::imshow("the key points for reference image.", *reference_image);
     }
 
     // Matching
@@ -147,18 +155,18 @@ cv::Mat BoardDetection::calculateTransformMatrix(cv::Mat input, cv::Mat referenc
     return H;
 }
 
-cv::Mat BoardDetection::transformImage(cv::Mat input, cv::Mat transform_matrix, cv::Size image_size)
+cv::Mat BoardDetection::transformImage(cv::Mat* input, cv::Mat* transform_matrix, cv::Size image_size)
 {
-    cv::Mat result;
-    cv::warpPerspective(input, result, transform_matrix, image_size);
+    cv::Mat* result;
+    cv::warpPerspective(*input, *result, *transform_matrix, image_size);
 
     if (isDebug_)
     {
         cv::namedWindow("the result of geometric transformation.", cv::WINDOW_AUTOSIZE|cv::WINDOW_FREERATIO);
-        cv::imshow("the result of geometric transformation.", result);
+        cv::imshow("the result of geometric transformation.", *result);
     }
 
-    return result;
+    return *result;
 }
 
 cv::Mat BoardDetection::getBoardImage()
